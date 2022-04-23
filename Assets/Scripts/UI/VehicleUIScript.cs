@@ -11,7 +11,7 @@ public class VehicleUIScript : MonoBehaviour
     [SerializeField, Tooltip("Le champ pour afficher notre ratio actuel")]
     private TextMeshProUGUI uiGear;
 
-    private PlayerVehicleControlScript playerVehicle; //Le vehicule du joueur, dont on affiche les informations
+    private VehicleControlScript playerVehicle; //Le vehicule du joueur, dont on affiche les informations
 
     private int playerSpeed; //La vitesse dans l'air du joueur
     private int playerRpm; //La vitesse moteur du joueur
@@ -22,7 +22,7 @@ public class VehicleUIScript : MonoBehaviour
     private void Awake()
     {
         //On recupere le component dont on a besoin
-        playerVehicle = FindObjectOfType<PlayerVehicleControlScript>();
+        playerVehicle = FindObjectOfType<VehicleControlScript>();
     }
     #endregion
 
