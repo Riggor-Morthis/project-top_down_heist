@@ -10,7 +10,7 @@ public class VehicleCameraScript : MonoBehaviour
 
     private float playerMaxSpeed, playerCurrentSpeed; //La vitesse maximale du vehicule, la vitesse actuelle du joueur
     private float playerSpeedFraction; //Le pourcentage (entre 0 et 1) entre vitesse max et vitesse actuelle
-    private const float yMinimum = 10, yOffset = 10, zMinimum = 4.5f, zOffset = 10; //La position de depart en y et z, et le maximum atteignable via offset
+    private const float yMinimum = 10, yOffset = 10, zMinimum = 3.5f, zOffset = 6.5f; //La position de depart en y et z, et le maximum atteignable via offset
     private float yCurrentOffset, zCurrentOffset; //L'offset qui doit etre actuellement applique a notre camera, en y et z respectivement
     private Vector3 playerPosition; //La position actuelle du joueur, et son angle actuel
     private float playerYAngle;// L'angle actuel du joueur selon l'axe Y (le seul angle qui nous interesse)
@@ -73,8 +73,8 @@ public class VehicleCameraScript : MonoBehaviour
     private void CalculateCurrentOffset()
     {
         playerSpeedFraction = Mathf.Log(0.5f + 1.5f * (playerCurrentSpeed / playerMaxSpeed), 2);
-        yCurrentOffset = (1 + playerSpeedFraction) * (yOffset / 2f);
-        zCurrentOffset = (1 + playerSpeedFraction) * (zOffset / 2f);
+        yCurrentOffset = (1f + playerSpeedFraction) * (yOffset / 2f);
+        zCurrentOffset = (1f + playerSpeedFraction) * (zOffset / 2f);
     }
 
     /// <summary>

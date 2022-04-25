@@ -42,7 +42,7 @@ public class VehicleControlScript : MonoBehaviour
     }
     #endregion
 
-    #region FixedUpdate
+    #region Update
     private void FixedUpdate()
     {
         //On gere les pedales
