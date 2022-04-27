@@ -69,6 +69,7 @@ public class VehicleControlScript : MonoBehaviour
     public int GetCurrentGear() => currentGear;
     public float GetRealPower() => (int)realPower;
     public float GetCurrentSpeedFloat() => currentSpeed;
+    public bool GetIsClutchEngaged() => isClutchEngaged;
     #endregion
 
     #region Private_Methods
