@@ -9,7 +9,7 @@
     <ProductVersion>10.0.20506</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <RootNamespace></RootNamespace>
-    <ProjectGuid>{25CFCE31-CB3C-FE59-A3DC-58D3F8BBE02B}</ProjectGuid>
+    <ProjectGuid>{E842B9A0-17B3-AC8F-96CA-E94A8C75C388}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>Assembly-CSharp</AssemblyName>
@@ -63,6 +63,8 @@
     <Compile Include="Assets\Scripts\Camera\VehicleCameraScript.cs" />
     <Compile Include="Assets\Scripts\Inputs\VehicleInputScript.cs" />
     <Compile Include="Assets\Scripts\UI\FuelGaugeUIScript.cs" />
+    <Compile Include="Assets\Scripts\Physics\WheelsContactEffectScript.cs" />
+    <Compile Include="Assets\Scripts\Physics\WheelContactScript.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />

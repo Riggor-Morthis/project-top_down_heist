@@ -6,8 +6,10 @@ public class VehicleControlScript : MonoBehaviour
 {
     #region Variables
     private Rigidbody playerRigidbody; //Le rigidbody de notre vehicule
+    private WheelsContactEffectScript wheelsContact; //Les roues qui sont au sol et leurs effets
 
     private float pedalInput = 0f, steeringWheelInput = 0f; //Les inputs qui sont passes a notre joueur
+    private bool handbrakeInput = false; //Input du joueur
 
     private float statPower = 69, realPower; //La puissance annoncee au joueur, et la puissance utilisee par ce script
     private float statTorque = 108, realTorque; //La puissance annoncee au joueur, et la puissance utilisee par ce script
@@ -20,15 +22,21 @@ public class VehicleControlScript : MonoBehaviour
     private const float maxRpm = 6000; //Les tours maximum pour le vilebrequin
 
     private bool isClutchEngaged = true; //Est-ce qu'on est embraye ou pas ?
+    private bool isStartingReverse = false, isReversing = false; //Est-ce qu'on est en train de voir si on recule ou pas ? Est-ce qu'on est en train de reculer ?
     private float[] gearBox; //Les differents ratio dans la boite de vitesse
     private float[] gearThresholds; //La vitesse de chaque ratio a 5000rpm
     private int currentGear = 0, maxGear; //Le ratio actuellement selectionne, et le nombre de ratio dans la boite
+    private float gearSwitchTime = 0.6f; //Le temps qu'il faut pour passer une vitesse
+    private float reverseTimer; //Combien de temps s'est ecoule depuis qu'on a demande a passer la marche arriere ?
 
     private float currentSpeed = 0, lostSpeed; //La vitesse (axe Z) actuelle du vehicule, et la vitesse qu'on perd lorsqu'on accelere pas
     private float currentRpm = 0, gainedRpm = 0; //Les tours actuels du vilebrequin, et les tours qu'on va gagner durant l'update actuelle
 
     private float steeringAngle = 0, wheelsAngle = 0; //L'angle du volant, et l'angle resultat pour les roues du vehicule
-    private float steeringTurnSpeed = 2, steeringComeBackSpeed = 4; //La vitesse a laquelle le volant atteint son maximum, et la vitesse a laquelle le volant retourne a son zero
+    private float steeringTurnSpeed = 1, steeringComeBackSpeed; //La vitesse a laquelle le volant atteint son maximum, et la vitesse a laquelle le volant retourne a son zero
+
+    private bool onTheGround;
+    private float torqueScalar, forwardScalar, steeringScalar; //Les modifications du comportement en fonction des roues qui sont au sol (ou non)
     #endregion
 
     #region Awake
@@ -45,6 +53,8 @@ public class VehicleControlScript : MonoBehaviour
     #region Update
     private void FixedUpdate()
     {
+        //On gere la gravite du vehicule
+        GravityHandler();
         //On gere les pedales
         PedalsHandler();
         //On gere le volant
@@ -58,10 +68,11 @@ public class VehicleControlScript : MonoBehaviour
     /// </summary>
     /// <param name="pI">input pour les pedales</param>
     /// <param name="sWI">input pour le volant</param>
-    public void ReceiveInputs(float pI, float sWI)
+    public void ReceiveInputs(float pI, float sWI, bool hI)
     {
         pedalInput = pI;
         steeringWheelInput = sWI;
+        handbrakeInput = hI;
     }
 
     public int GetCurrentSpeedInt() => (int)currentSpeed;
@@ -70,6 +81,7 @@ public class VehicleControlScript : MonoBehaviour
     public float GetRealPower() => (int)realPower;
     public float GetCurrentSpeedFloat() => currentSpeed;
     public bool GetIsClutchEngaged() => isClutchEngaged;
+    public bool GetIsReversing() => isReversing;
     #endregion
 
     #region Private_Methods
@@ -80,6 +92,8 @@ public class VehicleControlScript : MonoBehaviour
     {
         //On recupere le rigidbody
         playerRigidbody = GetComponent<Rigidbody>();
+        //On recupere le script pour les contact
+        wheelsContact = GetComponent<WheelsContactEffectScript>();
     }
 
     /// <summary>
@@ -97,7 +111,7 @@ public class VehicleControlScript : MonoBehaviour
 
         //On utilise les deux etapes precedents pour calculer les seuils de la boite de vitesse
         gearThresholds = new float[maxGear];
-        for (int i = 0; i < maxGear; i++) gearThresholds[i] = (5500f / maxRpm) * (realPower / gearBox[i]);
+        for (int i = 0; i < maxGear; i++) gearThresholds[i] = (5000f / maxRpm) * (realPower / gearBox[i]);
 
         //Calcul du couple reel
         if (statTorque >= 50) realTorque = 0.007673411f * (statTorque * statTorque * statTorque) - 7.938807578f * (statTorque * statTorque) + 3271.529874f * statTorque - 1282.489182f;
@@ -113,6 +127,21 @@ public class VehicleControlScript : MonoBehaviour
         //Calcul des freins
         if (statBrake >= 50) realBrake = -8963.1752480886f + 5091.5895510969f * Mathf.Log(statBrake);
         else realBrake = 219.10480420000079f * statBrake;
+
+        //Calcul de la vitesse de retour du volant
+        if (statHandling >= 50) steeringComeBackSpeed = 1 - 2.0484550067f + 0.6514417229f * Mathf.Log(statHandling);
+        else steeringComeBackSpeed = 1.3f;
+
+    }
+
+    private void GravityHandler()
+    {
+        wheelsContact.ContactEffects();
+        
+        torqueScalar = wheelsContact.GetTorqueMultiplier();
+        forwardScalar = wheelsContact.GetForwardScalar();
+        steeringScalar = wheelsContact.GetTurningScalar();
+        onTheGround = wheelsContact.IsOnTheGround();
     }
 
     /// <summary>
@@ -120,19 +149,43 @@ public class VehicleControlScript : MonoBehaviour
     /// </summary>
     private void PedalsHandler()
     {
-        //Est-ce qu'il est temps de changer de vitesse ?
-        if ((currentGear < maxGear - 1 && currentRpm + gainedRpm >= maxRpm) || (currentGear != 0 && currentSpeed < gearThresholds[currentGear - 1])) StartCoroutine(GearShift());
+        //Si on est pas en train de reculer, on a le fonctionnement normal
+        if (!isReversing)
+        {
+            //Est-ce qu'il est temps de changer de vitesse ?
+            if ((currentGear < maxGear - 1 && currentRpm + gainedRpm >= maxRpm) || (currentGear != 0 && currentSpeed < gearThresholds[currentGear - 1])) StartCoroutine(GearShift());
 
-        //On commence par choisir la bonne fonction pour gerer notre vitesse
-        if (pedalInput > 0)
-        {
-            if (isClutchEngaged) Accelerate();
-            else Decelerate(false);
+            //On commence par choisir la bonne fonction pour gerer notre vitesse
+            if (pedalInput > 0 && !handbrakeInput)
+            {
+                if (isClutchEngaged) Accelerate();
+                else Decelerate(false);
+            }
+            else if (currentSpeed > 0)
+            {
+                if (pedalInput < 0) Decelerate(true);
+                else Decelerate(false);
+            }
+            //Si on a pas d'input pour acceler et qu'on est a l'arret, peut etre que le joueur veut reculer ?
+            else if (currentSpeed == 0 && pedalInput < 0 && !handbrakeInput && !isStartingReverse) StartCoroutine(ReverseShift());
         }
-        else if (currentSpeed > 0)
+        //Sinon, on a un fonctionnement inverse etrange
+        else
         {
-            if (pedalInput < 0) Decelerate(true);
-            else Decelerate(false);
+            //Est-ce qu'on a remplit les conditions pour repasser en marche avant ?
+            if(currentSpeed == 0 && pedalInput >= 0 && !handbrakeInput)
+            {
+                isReversing = false;
+                StartCoroutine(GearShift());
+            }
+
+            //On oublie que ca fonctionne en inverse par ici
+            if (pedalInput < 0 && !handbrakeInput) Reverse();
+            else if(currentSpeed > 0)
+            {
+                if (pedalInput > 0) Decelerate(true);
+                else Decelerate(false);
+            }
         }
 
         //On applique les changements de vitesse
@@ -146,6 +199,20 @@ public class VehicleControlScript : MonoBehaviour
     {
         //On commence par augmenter la vitesse moteur
         gainedRpm = Time.fixedDeltaTime * ((realTorque * gearBox[currentGear]) / (realWeight * 1 * 1));
+        gainedRpm *= torqueScalar;
+        //On fait un check pour s'assurer qu'on respecte la realite
+        if (currentRpm + gainedRpm > maxRpm) currentRpm = maxRpm;
+        else currentRpm += gainedRpm;
+
+        //On peut maintenant deduire la vitesse du vehicule
+        CalculateSpeedFromRpm();
+    }
+
+    private void Reverse()
+    {
+        //On commence par augmenter la vitesse moteur, avec un ratio special
+        gainedRpm = Time.fixedDeltaTime * ((realTorque * (gearBox[0] + 1)) / (realWeight * 1 * 1));
+        gainedRpm *= torqueScalar;
         //On fait un check pour s'assurer qu'on respecte la realite
         if (currentRpm + gainedRpm > maxRpm) currentRpm = maxRpm;
         else currentRpm += gainedRpm;
@@ -161,7 +228,8 @@ public class VehicleControlScript : MonoBehaviour
     private void Decelerate(bool braking)
     {
         //On diminue la vitesse du vehicule
-        lostSpeed = Time.fixedDeltaTime * (((realDisplacement * gearBox[currentGear] + realBrake * Convert.ToSingle(braking)) * 1) / (realWeight * 1));
+        if(!isReversing) lostSpeed = Time.fixedDeltaTime * (((realDisplacement * gearBox[currentGear] + realBrake * Convert.ToSingle(braking)) * 1) / (realWeight * 1));
+        else lostSpeed = Time.fixedDeltaTime * (((realDisplacement * (gearBox[0] + 1) + realBrake * Convert.ToSingle(braking)) * 1) / (realWeight * 1));
         //On fait un check pour s'assurer qu'on respecte la realite
         if (currentSpeed - lostSpeed < 0) currentSpeed = 0;
         else currentSpeed -= lostSpeed;
@@ -175,7 +243,8 @@ public class VehicleControlScript : MonoBehaviour
     /// </summary>
     private void CalculateSpeedFromRpm()
     {
-        currentSpeed = (currentRpm / maxRpm) * (realPower / gearBox[currentGear]);
+        if(!isReversing) currentSpeed = (currentRpm / maxRpm) * (realPower / gearBox[currentGear]);
+        else currentSpeed = (currentRpm / maxRpm) * (realPower / (gearBox[0] + 1));
     }
 
     /// <summary>
@@ -183,7 +252,8 @@ public class VehicleControlScript : MonoBehaviour
     /// </summary>
     private void CalculateRpmFromSpeed()
     {
-        currentRpm = (currentSpeed * maxRpm * gearBox[currentGear]) / realPower;
+        if(!isReversing) currentRpm = (currentSpeed * maxRpm * gearBox[currentGear]) / realPower;
+        else currentRpm = (currentSpeed * maxRpm * (gearBox[0] + 1)) / realPower;
     }
 
     /// <summary>
@@ -191,7 +261,10 @@ public class VehicleControlScript : MonoBehaviour
     /// </summary>
     private void ApplySpeed()
     {
-        playerRigidbody.velocity = transform.forward * currentSpeed * unitySpeedScalar * Time.fixedDeltaTime;
+        if (!isReversing) playerRigidbody.velocity = transform.forward * currentSpeed * unitySpeedScalar * Time.fixedDeltaTime * (1 - 0.5f * forwardScalar)
+                + transform.right * currentSpeed * unitySpeedScalar * Time.fixedDeltaTime * (0.5f * forwardScalar);
+
+        else playerRigidbody.velocity = -transform.forward * currentSpeed * unitySpeedScalar * Time.fixedDeltaTime;
     }
 
     /// <summary>
@@ -244,7 +317,8 @@ public class VehicleControlScript : MonoBehaviour
     /// </summary>
     private void ApplySteering()
     {
-        transform.Rotate(Vector3.up, wheelsAngle * Time.fixedDeltaTime);
+        if(!isReversing) transform.Rotate(Vector3.up, wheelsAngle * Time.fixedDeltaTime);
+        else transform.Rotate(Vector3.up, -wheelsAngle * Time.fixedDeltaTime);
     }
     #endregion
 
@@ -258,7 +332,7 @@ public class VehicleControlScript : MonoBehaviour
         isClutchEngaged = false;
 
         //On change de ratio
-        yield return new WaitForSeconds(0.25f);
+        yield return new WaitForSeconds(gearSwitchTime);
 
         //On determine quel ratio on vient de passer
         currentGear = 0;
@@ -267,6 +341,29 @@ public class VehicleControlScript : MonoBehaviour
         //On peut enfin embrayer et appliquer les bons rpm en fonction de notre vitesse
         CalculateRpmFromSpeed();
         isClutchEngaged = true;
+    }
+
+    /// <summary>
+    /// Verifie que le joueur est en train d'essayer de passer une marche arriere
+    /// </summary>
+    IEnumerator ReverseShift()
+    {
+        //On commence le check et on debraye
+        isStartingReverse = true;
+        isClutchEngaged = false;
+
+        //On s'assure qu'on maintient les inputs assez longtemps
+        reverseTimer = 0;
+        do
+        {
+            yield return null;
+            reverseTimer += Time.deltaTime;
+        } while (reverseTimer < gearSwitchTime && pedalInput < 0 && !handbrakeInput);
+        if (reverseTimer >= gearSwitchTime) isReversing = true;
+
+        //Une fois qu'on a fini, on arrete le check et embraye
+        isClutchEngaged = true;
+        isStartingReverse = false;
     }
     #endregion
 }

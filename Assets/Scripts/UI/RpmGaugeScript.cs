@@ -18,6 +18,7 @@ public class RpmGaugeScript : MonoBehaviour
     private int arrowSpeed = 6000; //La vitesse a laquelle l'aiguille se deplace lorsqu'on est en desynchro
     private int playerGear; //La vitesse de la boite du joueur
     private bool isPlayerClutched; //Est-ce que le joueur est embraye ?
+    private bool isPlayerReversing; //Est-ce que le joueur est en marche arriere ?
     #endregion
 
     #region Start
@@ -48,6 +49,7 @@ public class RpmGaugeScript : MonoBehaviour
         playerRpm = playerVehicle.GetCurrentRpm();
         playerGear = playerVehicle.GetCurrentGear();
         isPlayerClutched = playerVehicle.GetIsClutchEngaged();
+        isPlayerReversing = playerVehicle.GetIsReversing();
     }
 
     /// <summary>
@@ -56,7 +58,8 @@ public class RpmGaugeScript : MonoBehaviour
     private void UpdateGear()
     {
         //On affiche la bonne chose a l'ecran
-        uiGear.text = (playerGear + 1).ToString();
+        if (!isPlayerReversing) uiGear.text = (playerGear + 1).ToString();
+        else uiGear.text = "R";
 
         //On change la couleur si necessaire
         if (isPlayerClutched && uiGear.color != clutchedGear) uiGear.color = clutchedGear;
