@@ -174,7 +174,7 @@ Transform:
   - {fileID: 42557490}
   m_Father: {fileID: 0}
   m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -45}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &32206482
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -391,7 +391,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54e6b3650c7d26f4ab3c47495f4371d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  test: 0
   groundLayer:
     serializedVersion: 2
     m_Bits: 256
@@ -503,7 +502,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54e6b3650c7d26f4ab3c47495f4371d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  test: 0
   groundLayer:
     serializedVersion: 2
     m_Bits: 256
@@ -615,7 +613,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54e6b3650c7d26f4ab3c47495f4371d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  test: 0
   groundLayer:
     serializedVersion: 2
     m_Bits: 256
@@ -1836,7 +1833,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54e6b3650c7d26f4ab3c47495f4371d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  test: 1
   groundLayer:
     serializedVersion: 2
     m_Bits: 256

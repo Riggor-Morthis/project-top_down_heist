@@ -59,12 +59,12 @@
     <Compile Include="Assets\Scripts\UI\DashboardUIScript.cs" />
     <Compile Include="Assets\Scripts\UI\RpmGaugeScript.cs" />
     <Compile Include="Assets\Scripts\Vehicles\VehicleControlScript.cs" />
+    <Compile Include="Assets\Scripts\Physics\WheelsContactEffectScript.cs" />
     <Compile Include="Assets\Scripts\UI\SpeedGaugeUIScript.cs" />
     <Compile Include="Assets\Scripts\Camera\VehicleCameraScript.cs" />
+    <Compile Include="Assets\Scripts\Physics\WheelContactScript.cs" />
     <Compile Include="Assets\Scripts\Inputs\VehicleInputScript.cs" />
     <Compile Include="Assets\Scripts\UI\FuelGaugeUIScript.cs" />
-    <Compile Include="Assets\Scripts\Physics\WheelsContactEffectScript.cs" />
-    <Compile Include="Assets\Scripts\Physics\WheelContactScript.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
